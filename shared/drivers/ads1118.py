@@ -110,8 +110,16 @@ class ADS1118:
             ]
         )
 
+    def _int_from_two_bytes_signed_be(buffer):
+        sum = 0
+        if buffer[0] & 0x80:
+            sum -= 65536
+        sum += 256 * buffer[0]
+        sum += buffer[1]
+        return sum
+
     def _temperature_from_bytes(receive_buffer):
-        reading = int.from_bytes(receive_buffer, "big", signed=True) >> 2
+        reading = ADS1118._int_from_two_bytes_signed_be(receive_buffer) >> 2
         return reading * 0.03125
 
     def _voltage_from_bytes(receive_buffer, fsr):
@@ -125,4 +133,4 @@ class ADS1118:
                 (ADS1118_FSR.FSR_0256V, 7.8125e-6),
             ]
         )[fsr]
-        return int.from_bytes(receive_buffer, "big", signed=True) * lsb_size
+        return ADS1118._int_from_two_bytes_signed_be(receive_buffer) * lsb_size

@@ -14,6 +14,10 @@ def GREEN(text):
     return "\033[92m" + text + "\033[0m"
 
 
+def YELLOW(text):
+    return "\033[93m" + text + "\033[0m"
+
+
 def CYAN(text):
     return "\033[96m" + text + "\033[0m"
 
@@ -92,7 +96,7 @@ parser = argparse.ArgumentParser(
     + "general lib folders with board-specific lib folders. The program must be run "
     + "from the root directory of a properly-structured spacecraft software project."
 )
-parser.add_argument("deploy_type", nargs="?", default="flight_computer")
+parser.add_argument("deploy_type")
 parser.add_argument("target_drive", nargs="?", default="CIRCUITPY")
 args = parser.parse_args()
 print(
@@ -101,10 +105,19 @@ print(
     )
 )
 
-if args.deploy_type not in os.listdir(os.path.join(".", "applications")):
+deploy_types = os.listdir(os.path.join(".", "applications"))
+if args.deploy_type not in deploy_types:
     print(
         RED(f"ERROR: No software found for target {args.deploy_type}"), file=sys.stderr
     )
+    deploy_types_string = filter(
+        (lambda x: (len(x) < 8) or (x[-8:] != "_testapp")), deploy_types
+    )
+    deploy_types_string = list(map((lambda x: YELLOW(x)), deploy_types_string))
+    deploy_types_string = (
+        ", ".join(deploy_types_string[:-1]) + ", and " + deploy_types_string[-1]
+    )
+    print(f"Available deploy types are {deploy_types_string}", file=sys.stderr)
     exit()
 
 target_drives = [
@@ -122,7 +135,7 @@ if len(target_drives) != 1:
     )
     print(
         RED(
-            "ERROR: Exited without deploying the CDH FC software. "
+            "ERROR: Exited without deploying the software. "
             + "Rename a drive, or target a drive name that is unique and exists."
         ),
         file=sys.stderr,

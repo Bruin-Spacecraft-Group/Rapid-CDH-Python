@@ -1,6 +1,9 @@
 import digitalio
+import busio
+import time
 
 import asyncio
+import pin_manager
 
 
 class ADS1118_MUX_SELECT:
@@ -35,17 +38,40 @@ class ADS1118_SAMPLE_RATE:
     RATE_860 = 7
 
 
-# When running on an spi bus slower than 40 kHz, async transfers should be used
-# to maintain responsiveness of all tasks. When running on an spi bus which is
-# faster than this, the overhead of ayncio context switching dominates the time
-# taken, and synchronous transfers are more efficient.
-ADS1118_ASYNC_TRANSFER = False
+ADS1118_LSB_SIZES = dict(
+    [
+        (ADS1118_FSR.FSR_6144V, 187.5e-6),
+        (ADS1118_FSR.FSR_4096V, 125e-6),
+        (ADS1118_FSR.FSR_2048V, 62.5e-6),
+        (ADS1118_FSR.FSR_1024V, 31.25e-6),
+        (ADS1118_FSR.FSR_0512V, 15.625e-6),
+        (ADS1118_FSR.FSR_0256V, 7.8125e-6),
+    ]
+)
+ADS1118_SPS_DELAYS = dict(
+    [
+        (ADS1118_SAMPLE_RATE.RATE_8, 0.125),
+        (ADS1118_SAMPLE_RATE.RATE_16, 0.063),
+        (ADS1118_SAMPLE_RATE.RATE_32, 0.032),
+        (ADS1118_SAMPLE_RATE.RATE_64, 0.016),
+        (ADS1118_SAMPLE_RATE.RATE_128, 0.008),
+        (ADS1118_SAMPLE_RATE.RATE_250, 0.004),
+        (ADS1118_SAMPLE_RATE.RATE_475, 0.003),
+        (ADS1118_SAMPLE_RATE.RATE_860, 0.002),
+    ]
+)
+ADS1118_SPI_RESET_TIME = 0.030  # ideally 28ms, but give it some wiggle room
 
 
 class ADS1118:
-    def __init__(self, spi_device):
-        self.spi_device = spi_device
-        self.data_ready = digitalio.DigitalInOut(spi_device.get_MISO_pin())
+    def __init__(self, sck, mosi, miso, ss):
+        pm = pin_manager.PinManager.get_instance()
+        self.spi_bus = pm.create_spi(sck, mosi, miso)
+        self.drdy_gpio = pm.create_digital_in_out(miso)
+        self.ss_gpio = pm.create_digital_in_out(ss)
+        with self.ss_gpio as ss:
+            ss.direction = digitalio.Direction.OUTPUT
+            ss.value = True
 
     # Returns either the voltage in volts, or the temperature in degrees Celsius
     async def take_sample(
@@ -60,37 +86,47 @@ class ADS1118:
         )
         receive_buffer = bytearray([0, 0])
 
-        if ADS1118_ASYNC_TRANSFER:
-            await self.spi_device.async_transfer(transmit_buffer, receive_buffer)
-        else:
-            while not self.spi_device.get_spi().try_lock():
-                await asyncio.sleep(0)
-            self.spi_device.get_chip_select_pin().value = False
-            self.spi_device.get_spi().write_readinto(transmit_buffer, receive_buffer)
-            self.spi_device.get_chip_select_pin().value = True
-            self.spi_device.get_spi().unlock()
-
         data_ready = False
+
         while not data_ready:
-            await asyncio.sleep(0)
-            while not self.spi_device.get_spi().try_lock():
-                await asyncio.sleep(0)
 
-            self.spi_device.get_chip_select_pin().value = False
-            await asyncio.sleep(100e-9)  # CS to DRDY propogation time
-            data_ready = not self.data_ready.value
-            self.spi_device.get_chip_select_pin().value = True
-            self.spi_device.get_spi().unlock()
+            # send data-getting command
+            with self.spi_bus as spi, self.ss_gpio as ss:
+                spi.try_lock()
+                spi.configure(baudrate=1000000, polarity=0, phase=1)
+                ss.direction = digitalio.Direction.OUTPUT
+                ss.value = False
+                spi.write_readinto(transmit_buffer, receive_buffer)
+                ss.value = True
+                spi.unlock()
 
-        if ADS1118_ASYNC_TRANSFER:
-            await self.spi_device.async_transfer(transmit_buffer, receive_buffer)
-        else:
-            while not self.spi_device.get_spi().try_lock():
-                await asyncio.sleep(0)
-            self.spi_device.get_chip_select_pin().value = False
-            self.spi_device.get_spi().write_readinto(transmit_buffer, receive_buffer)
-            self.spi_device.get_chip_select_pin().value = True
-            self.spi_device.get_spi().unlock()
+            # wait for data to be ready
+            await asyncio.sleep(ADS1118_SPS_DELAYS[sample_rate])
+
+            # check if data is ready
+            with self.drdy_gpio as drdy, self.ss_gpio as ss:
+                ss.direction = digitalio.Direction.OUTPUT
+                ss.value = False
+                # busy-wait for CS to DRDY propogation time, unless it takes so long that the
+                # ADC resets its SPI peripheral (at which point, quit looking for DRDY and retry
+                # the whole transaction)
+                # don't do this async because we're currently holding onto hardware
+                # we've already waited the delay time above so this should be near-instant
+                t0 = time.monotonic_ns()
+                while (not data_ready) and (
+                    (time.monotonic_ns() - t0) < ADS1118_SPI_RESET_TIME
+                ):
+                    data_ready = not drdy.value
+                ss.value = True
+
+        with self.spi_bus as spi, self.ss_gpio as ss:
+            spi.try_lock()
+            spi.configure(baudrate=1000000, polarity=0, phase=1)
+            ss.direction = digitalio.Direction.OUTPUT
+            ss.value = False
+            spi.write_readinto(transmit_buffer, receive_buffer)
+            ss.value = True
+            spi.unlock()
 
         if channel == ADS1118_MUX_SELECT.TEMPERATURE:
             return ADS1118._temperature_from_bytes(receive_buffer)
@@ -117,19 +153,18 @@ class ADS1118:
             ]
         )
 
+    def _int_from_two_bytes_signed_be(buffer):
+        sum = 0
+        if buffer[0] & 0x80:
+            sum -= 65536
+        sum += 256 * buffer[0]
+        sum += buffer[1]
+        return sum
+
     def _temperature_from_bytes(receive_buffer):
-        reading = int.from_bytes(receive_buffer, "big", signed=True) >> 2
+        reading = ADS1118._int_from_two_bytes_signed_be(receive_buffer) >> 2
         return reading * 0.03125
 
     def _voltage_from_bytes(receive_buffer, fsr):
-        lsb_size = dict(
-            [
-                (ADS1118_FSR.FSR_6144V, 187.5e-6),
-                (ADS1118_FSR.FSR_4096V, 125e-6),
-                (ADS1118_FSR.FSR_2048V, 62.5e-6),
-                (ADS1118_FSR.FSR_1024V, 31.25e-6),
-                (ADS1118_FSR.FSR_0512V, 15.625e-6),
-                (ADS1118_FSR.FSR_0256V, 7.8125e-6),
-            ]
-        )[fsr]
-        return int.from_bytes(receive_buffer, "big", signed=True) * lsb_size
+        lsb_size = ADS1118_LSB_SIZES[fsr]
+        return ADS1118._int_from_two_bytes_signed_be(receive_buffer) * lsb_size

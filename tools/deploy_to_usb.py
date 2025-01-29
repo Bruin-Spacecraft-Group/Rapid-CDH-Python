@@ -97,18 +97,27 @@ parser = argparse.ArgumentParser(
     + "from the root directory of a properly-structured spacecraft software project."
 )
 parser.add_argument("deploy_type")
-parser.add_argument("target_drive", nargs="?", default="CIRCUITPY")
+deploy_target = parser.add_mutually_exclusive_group(required=True)
+deploy_target.add_argument("--target_drive", nargs="?", default="CIRCUITPY")
+deploy_target.add_argument("--tmp_folder", action="store_true")
 args = parser.parse_args()
-print(
-    CYAN(
-        f"Starting deploy type {args.deploy_type} to CircuitPython board with name {args.target_drive}..."
+if args.target_drive is None:
+    args.target_drive = "CIRCUITPY"
+
+if args.tmp_folder:
+    print(CYAN(f"Starting deploy type {args.deploy_type} to temporary folder..."))
+else:
+    print(
+        CYAN(
+            f"Starting deploy type {args.deploy_type} to CircuitPython board with name {args.target_drive}..."
+        )
     )
-)
 
 deploy_types = os.listdir(os.path.join(".", "applications"))
 if args.deploy_type not in deploy_types:
     print(
-        RED(f"ERROR: No software found for target {args.deploy_type}"), file=sys.stderr
+        RED(f"ERROR: No software found for target {args.deploy_type}"),
+        file=sys.stderr,
     )
     deploy_types_string = filter(
         (lambda x: (len(x) < 8) or (x[-8:] != "_testapp")), deploy_types
@@ -120,35 +129,42 @@ if args.deploy_type not in deploy_types:
     print(f"Available deploy types are {deploy_types_string}", file=sys.stderr)
     exit()
 
-target_drives = [
-    mp[0]
-    for mp in filter(
-        (lambda mp: mp[1] == args.target_drive), find_mount_points_with_names()
-    )
-]
-if len(target_drives) != 1:
-    print(
-        RED(
-            f"ERROR: There must be exactly one drive named {args.target_drive} but {len(target_drives)} were found."
-        ),
-        file=sys.stderr,
-    )
-    print(
-        RED(
-            "ERROR: Exited without deploying the software. "
-            + "Rename a drive, or target a drive name that is unique and exists."
-        ),
-        file=sys.stderr,
-    )
-    exit()
+if args.tmp_folder:
+    import tempfile
+
+    deploy_path = os.path.join(tempfile.gettempdir(), "CIRCUITPY")
+    os.makedirs(deploy_path, exist_ok=True)
+else:
+    target_drives = [
+        mp[0]
+        for mp in filter(
+            (lambda mp: mp[1] == args.target_drive), find_mount_points_with_names()
+        )
+    ]
+    if len(target_drives) != 1:
+        print(
+            RED(
+                f"ERROR: There must be exactly one drive named {args.target_drive} but {len(target_drives)} were found."
+            ),
+            file=sys.stderr,
+        )
+        print(
+            RED(
+                "ERROR: Exited without deploying the software. "
+                + "Rename a drive, or target a drive name that is unique and exists."
+            ),
+            file=sys.stderr,
+        )
+        exit()
+    deploy_path = target_drives[0]
 
 print(
-    f"Configuration complete! Loading software for {args.deploy_type} to {target_drives[0]}"
+    f"Configuration complete! Loading software for {args.deploy_type} to {deploy_path}"
 )
 
 print("Wiping existing software on device...")
-for item in os.listdir(target_drives[0]):
-    item_path = os.path.join(target_drives[0], item)
+for item in os.listdir(deploy_path):
+    item_path = os.path.join(deploy_path, item)
     if os.path.isdir(item_path):
         shutil.rmtree(item_path)
     else:
@@ -157,7 +173,7 @@ for item in os.listdir(target_drives[0]):
 print("Programming shared libraries to device...")
 for item in os.listdir(os.path.join(".", "shared")):
     src_item_path = os.path.join(".", "shared", item)
-    dst_item_path = os.path.join(target_drives[0], item)
+    dst_item_path = os.path.join(deploy_path, item)
     if os.path.isdir(src_item_path):
         shutil.copytree(
             src_item_path, dst_item_path, symlinks=False, dirs_exist_ok=True
@@ -168,7 +184,7 @@ for item in os.listdir(os.path.join(".", "shared")):
 print("Programming target-specific software to device...")
 for item in os.listdir(os.path.join(".", "applications", args.deploy_type)):
     src_item_path = os.path.join(".", "applications", args.deploy_type, item)
-    dst_item_path = os.path.join(target_drives[0], item)
+    dst_item_path = os.path.join(deploy_path, item)
     if os.path.isdir(src_item_path):
         shutil.copytree(
             src_item_path, dst_item_path, symlinks=False, dirs_exist_ok=True
@@ -177,7 +193,7 @@ for item in os.listdir(os.path.join(".", "applications", args.deploy_type)):
         shutil.copyfile(src_item_path, dst_item_path, follow_symlinks=True)
 
 print("Removing any generated __pycache__ directories copied to device...")
-for tree in os.walk(target_drives[0], followlinks=True):
+for tree in os.walk(deploy_path, followlinks=True):
     if "__pycache__" in tree[1]:
         shutil.rmtree(os.path.join(tree[0], "__pycache__"))
 

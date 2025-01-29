@@ -5,6 +5,104 @@ import ads1118
 
 class ADS1118_Test(unittest.TestCase):
 
+    _NON_BYTE_OBJECTS = [object(), {}, [], 3.0, -1, 256]
+
+    def test_channel_parameter_validation(self):
+        for ch in [
+            ads1118.ADS1118_MUX_SELECT.CH0_SINGLE_END,
+            ads1118.ADS1118_MUX_SELECT.CH1_SINGLE_END,
+            ads1118.ADS1118_MUX_SELECT.CH2_SINGLE_END,
+            ads1118.ADS1118_MUX_SELECT.CH3_SINGLE_END,
+            ads1118.ADS1118_MUX_SELECT.CH0_CH1_DIFF,
+            ads1118.ADS1118_MUX_SELECT.CH0_CH3_DIFF,
+            ads1118.ADS1118_MUX_SELECT.CH1_CH3_DIFF,
+            ads1118.ADS1118_MUX_SELECT.CH2_CH3_DIFF,
+            ads1118.ADS1118_MUX_SELECT.TEMPERATURE,
+        ]:
+            failure = None
+            try:
+                ads1118.ADS1118._check_channel_param(ch)
+            except AssertionError as e:
+                failure = e
+            self.assertIsNone(failure)
+        for non_byte in ADS1118_Test._NON_BYTE_OBJECTS:
+            self.assertRaises(
+                AssertionError,
+                ads1118.ADS1118._check_channel_param,
+                non_byte,
+            )
+        self.assertRaises(
+            AssertionError,
+            ads1118.ADS1118._check_channel_param,
+            120,
+        )
+
+    def test_fsr_validation(self):
+        for fsr in [
+            ads1118.ADS1118_FSR.FSR_6144V,
+            ads1118.ADS1118_FSR.FSR_4096V,
+            ads1118.ADS1118_FSR.FSR_2048V,
+            ads1118.ADS1118_FSR.FSR_1024V,
+            ads1118.ADS1118_FSR.FSR_0512V,
+            ads1118.ADS1118_FSR.FSR_0256V,
+        ]:
+            failure = None
+            try:
+                ads1118.ADS1118._check_fsr_param(fsr)
+            except AssertionError as e:
+                failure = e
+            self.assertIsNone(failure)
+        for non_byte in ADS1118_Test._NON_BYTE_OBJECTS:
+            self.assertRaises(
+                AssertionError,
+                ads1118.ADS1118._check_fsr_param,
+                non_byte,
+            )
+        self.assertRaises(
+            AssertionError,
+            ads1118.ADS1118._check_fsr_param,
+            120,
+        )
+        self.assertRaises(
+            AssertionError,
+            ads1118.ADS1118._check_fsr_param,
+            255,
+        )
+
+    def test_sps_validation(self):
+        for sps in [
+            ads1118.ADS1118_SAMPLE_RATE.RATE_8,
+            ads1118.ADS1118_SAMPLE_RATE.RATE_16,
+            ads1118.ADS1118_SAMPLE_RATE.RATE_32,
+            ads1118.ADS1118_SAMPLE_RATE.RATE_64,
+            ads1118.ADS1118_SAMPLE_RATE.RATE_128,
+            ads1118.ADS1118_SAMPLE_RATE.RATE_250,
+            ads1118.ADS1118_SAMPLE_RATE.RATE_475,
+            ads1118.ADS1118_SAMPLE_RATE.RATE_860,
+        ]:
+            failure = None
+            try:
+                ads1118.ADS1118._check_sps_param(sps)
+            except AssertionError as e:
+                failure = e
+            self.assertIsNone(failure)
+        for non_byte in ADS1118_Test._NON_BYTE_OBJECTS:
+            self.assertRaises(
+                AssertionError,
+                ads1118.ADS1118._check_sps_param,
+                non_byte,
+            )
+        self.assertRaises(
+            AssertionError,
+            ads1118.ADS1118._check_sps_param,
+            120,
+        )
+        self.assertRaises(
+            AssertionError,
+            ads1118.ADS1118._check_sps_param,
+            255,
+        )
+
     def test_parameter_validation(self):
 
         good_params = [

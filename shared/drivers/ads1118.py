@@ -10,7 +10,7 @@ import digitalio
 import pin_manager
 
 
-class ADS1118_MUX_SELECT:
+class MuxSelection:
     CH0_SINGLE_END = 4
     CH1_SINGLE_END = 5
     CH2_SINGLE_END = 6
@@ -22,16 +22,16 @@ class ADS1118_MUX_SELECT:
     TEMPERATURE = 255
 
 
-class ADS1118_FSR:
-    FSR_6144V = 0
-    FSR_4096V = 1
-    FSR_2048V = 2
-    FSR_1024V = 3
-    FSR_0512V = 4
-    FSR_0256V = 5  # 6 and 7 are also valid here
+class InputRange:
+    FSR_6_144V = 0
+    FSR_4_096V = 1
+    FSR_2_048V = 2
+    FSR_1_024V = 3
+    FSR_0_512V = 4
+    FSR_0_256V = 5  # 6 and 7 are also valid here
 
 
-class ADS1118_SAMPLE_RATE:
+class SamplingRate:
     RATE_8 = 0
     RATE_16 = 1
     RATE_32 = 2
@@ -44,24 +44,24 @@ class ADS1118_SAMPLE_RATE:
 
 ADS1118_LSB_SIZES = dict(
     [
-        (ADS1118_FSR.FSR_6144V, 187.5e-6),
-        (ADS1118_FSR.FSR_4096V, 125e-6),
-        (ADS1118_FSR.FSR_2048V, 62.5e-6),
-        (ADS1118_FSR.FSR_1024V, 31.25e-6),
-        (ADS1118_FSR.FSR_0512V, 15.625e-6),
-        (ADS1118_FSR.FSR_0256V, 7.8125e-6),
+        (InputRange.FSR_6_144V, 187.5e-6),
+        (InputRange.FSR_4_096V, 125e-6),
+        (InputRange.FSR_2_048V, 62.5e-6),
+        (InputRange.FSR_1_024V, 31.25e-6),
+        (InputRange.FSR_0_512V, 15.625e-6),
+        (InputRange.FSR_0_256V, 7.8125e-6),
     ]
 )
 ADS1118_SPS_DELAYS = dict(
     [
-        (ADS1118_SAMPLE_RATE.RATE_8, 0.125),
-        (ADS1118_SAMPLE_RATE.RATE_16, 0.063),
-        (ADS1118_SAMPLE_RATE.RATE_32, 0.032),
-        (ADS1118_SAMPLE_RATE.RATE_64, 0.016),
-        (ADS1118_SAMPLE_RATE.RATE_128, 0.008),
-        (ADS1118_SAMPLE_RATE.RATE_250, 0.004),
-        (ADS1118_SAMPLE_RATE.RATE_475, 0.003),
-        (ADS1118_SAMPLE_RATE.RATE_860, 0.002),
+        (SamplingRate.RATE_8, 0.125),
+        (SamplingRate.RATE_16, 0.063),
+        (SamplingRate.RATE_32, 0.032),
+        (SamplingRate.RATE_64, 0.016),
+        (SamplingRate.RATE_128, 0.008),
+        (SamplingRate.RATE_250, 0.004),
+        (SamplingRate.RATE_475, 0.003),
+        (SamplingRate.RATE_860, 0.002),
     ]
 )
 ADS1118_SPI_RESET_TIME = 0.030  # ideally 28ms, but give it some wiggle room
@@ -81,8 +81,8 @@ class ADS1118:
     async def take_sample(
         self,
         channel,
-        input_range=ADS1118_FSR.FSR_4096V,
-        sample_rate=ADS1118_SAMPLE_RATE.RATE_128,
+        input_range=InputRange.FSR_4_096V,
+        sample_rate=SamplingRate.RATE_128,
     ):
         ADS1118._check_sampling_params(channel, input_range, sample_rate)
         transmit_buffer = ADS1118._build_config_register_bytearray(
@@ -134,13 +134,13 @@ class ADS1118:
 
         return (
             ADS1118._temperature_from_bytes(receive_buffer)
-            if (channel == ADS1118_MUX_SELECT.TEMPERATURE)
+            if (channel == MuxSelection.TEMPERATURE)
             else ADS1118._voltage_from_bytes(receive_buffer, input_range)
         )
 
     @staticmethod
     def _check_channel_param(channel):
-        if channel is not ADS1118_MUX_SELECT.TEMPERATURE:
+        if channel is not MuxSelection.TEMPERATURE:
             assert isinstance(channel, int)
             assert channel >= 0
             assert channel < 8
@@ -172,7 +172,7 @@ class ADS1118:
                 | ((input_range & 0b111) << 1)
                 | 1,
                 ((sample_rate & 0b111) << 5)
-                | ((channel == ADS1118_MUX_SELECT.TEMPERATURE) << 4)
+                | ((channel == MuxSelection.TEMPERATURE) << 4)
                 | 0b1010,
             ]
         )

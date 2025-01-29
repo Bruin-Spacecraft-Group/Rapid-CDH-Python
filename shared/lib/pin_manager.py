@@ -80,14 +80,15 @@ class DefaultPinClaimer:
 class PinManager:
     _instance = None
 
+    @staticmethod
     def get_instance():
         if PinManager._instance is None:
             PinManager._instance = PinManager()
         return PinManager._instance
 
     def __init__(self):
-        self._pins = dict()
-        self._devices = dict()
+        self._pins = {}
+        self._devices = {}
 
     def _get_pin_reference(self, pin):
         if pin not in self._pins:
@@ -108,11 +109,11 @@ class PinManager:
             (lambda: digitalio.DigitalInOut(pin)),
         )
 
-    def create_spi(self, clock, MOSI, MISO):
+    def create_spi(self, clock, mosi, miso):
         return self._create_general_device(
-            [clock, MOSI, MISO],
+            [clock, mosi, miso],
             busio.SPI,
-            (lambda: busio.SPI(clock, MOSI, MISO)),
+            (lambda: busio.SPI(clock, mosi, miso)),
         )
 
     def create_i2c(self, scl, sda, frequency=100000):

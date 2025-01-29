@@ -4,8 +4,6 @@ import analogio
 from drivers.ads1118 import (
     ADS1118,
     ADS1118_MUX_SELECT,
-    ADS1118_FSR,
-    ADS1118_SAMPLE_RATE,
 )
 
 

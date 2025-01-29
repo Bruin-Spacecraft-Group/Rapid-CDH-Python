@@ -1,7 +1,4 @@
-import busio
 import digitalio
-
-import asyncio
 
 
 class Resolution:

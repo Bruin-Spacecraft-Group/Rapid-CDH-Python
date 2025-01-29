@@ -1,8 +1,12 @@
-import digitalio
-import busio
-import time
+"""
+TODO: document this module
+"""
 
+import time
 import asyncio
+
+import digitalio
+
 import pin_manager
 
 
@@ -69,9 +73,9 @@ class ADS1118:
         self.spi_bus = pm.create_spi(sck, mosi, miso)
         self.drdy_gpio = pm.create_digital_in_out(miso)
         self.ss_gpio = pm.create_digital_in_out(ss)
-        with self.ss_gpio as ss:
-            ss.direction = digitalio.Direction.OUTPUT
-            ss.value = True
+        with self.ss_gpio as ss_gpio:
+            ss_gpio.direction = digitalio.Direction.OUTPUT
+            ss_gpio.value = True
 
     # Returns either the voltage in volts, or the temperature in degrees Celsius
     async def take_sample(
@@ -128,18 +132,38 @@ class ADS1118:
             ss.value = True
             spi.unlock()
 
-        if channel == ADS1118_MUX_SELECT.TEMPERATURE:
-            return ADS1118._temperature_from_bytes(receive_buffer)
-        else:
-            return ADS1118._voltage_from_bytes(receive_buffer, input_range)
-
-    def _check_sampling_params(channel, input_range, sample_rate):
-        assert channel == ADS1118_MUX_SELECT.TEMPERATURE or (
-            type(channel) == int and channel >= 0 and channel < 8
+        return (
+            ADS1118._temperature_from_bytes(receive_buffer)
+            if (channel == ADS1118_MUX_SELECT.TEMPERATURE)
+            else ADS1118._voltage_from_bytes(receive_buffer, input_range)
         )
-        assert type(input_range) == int and input_range >= 0 and input_range < 8
-        assert type(sample_rate) == int and sample_rate >= 0 and sample_rate < 8
 
+    @staticmethod
+    def _check_channel_param(channel):
+        if channel is not ADS1118_MUX_SELECT.TEMPERATURE:
+            assert isinstance(channel, int)
+            assert channel >= 0
+            assert channel < 8
+
+    @staticmethod
+    def _check_fsr_param(input_range):
+        assert isinstance(input_range, int)
+        assert input_range >= 0
+        assert input_range < 8
+
+    @staticmethod
+    def _check_sps_param(sample_rate):
+        assert isinstance(sample_rate, int)
+        assert sample_rate >= 0
+        assert sample_rate < 8
+
+    @staticmethod
+    def _check_sampling_params(channel, input_range, sample_rate):
+        ADS1118._check_channel_param(channel)
+        ADS1118._check_fsr_param(input_range)
+        ADS1118._check_sps_param(sample_rate)
+
+    @staticmethod
     def _build_config_register_bytearray(channel, input_range, sample_rate):
         return bytearray(
             [
@@ -153,18 +177,21 @@ class ADS1118:
             ]
         )
 
-    def _int_from_two_bytes_signed_be(buffer):
-        sum = 0
+    @staticmethod
+    def _int_from_two_bytes_signed_be(buffer: bytearray):
+        output = 0
         if buffer[0] & 0x80:
-            sum -= 65536
-        sum += 256 * buffer[0]
-        sum += buffer[1]
-        return sum
+            output -= 65536
+        output += 256 * buffer[0]
+        output += buffer[1]
+        return output
 
+    @staticmethod
     def _temperature_from_bytes(receive_buffer):
         reading = ADS1118._int_from_two_bytes_signed_be(receive_buffer) >> 2
         return reading * 0.03125
 
+    @staticmethod
     def _voltage_from_bytes(receive_buffer, fsr):
         lsb_size = ADS1118_LSB_SIZES[fsr]
         return ADS1118._int_from_two_bytes_signed_be(receive_buffer) * lsb_size

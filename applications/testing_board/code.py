@@ -1,10 +1,7 @@
 import board
-import microcontroller
-import digitalio
 import busio
 
 import asyncio
-import time
 
 inter_subsystem_spi_bus = busio.SPI(
     clock=board.D12,

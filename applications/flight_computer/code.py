@@ -3,7 +3,7 @@ import microcontroller
 import analogio
 from drivers.ads1118 import (
     ADS1118,
-    ADS1118_MUX_SELECT,
+    MuxSelection,
 )
 
 
@@ -14,7 +14,7 @@ def test_ads1118():
         microcontroller.pin.PA14,
         microcontroller.pin.PB17,
     )
-    print("temp:", asyncio.run(adc.take_sample(ADS1118_MUX_SELECT.TEMPERATURE)))
+    print("temp:", asyncio.run(adc.take_sample(MuxSelection.TEMPERATURE)))
 
     aout = analogio.AnalogOut(microcontroller.pin.PA05)
 
@@ -24,7 +24,7 @@ def test_ads1118():
     for i in range(101):
         x = 0.031 * i
         aout.value = vtoi(x)
-        y = asyncio.run(adc.take_sample(ADS1118_MUX_SELECT.CH1_SINGLE_END))
+        y = asyncio.run(adc.take_sample(MuxSelection.CH1_SINGLE_END))
         print(x, ",", y)
 
 

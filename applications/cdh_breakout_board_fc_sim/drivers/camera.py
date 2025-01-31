@@ -1,5 +1,5 @@
 """
-Driver class for the ArduCam 5MP Mini SPI breakout board.
+Driver module for the ArduCam 5MP Mini SPI breakout board.
 """
 
 # the most up-to-date camera code is in a Jupyter notebook and has never been

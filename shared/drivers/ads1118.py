@@ -1,5 +1,5 @@
 """
-TODO: document this module
+Driver module for the ADS1118 SPI analog-to-digital converter from Texas Instruments.
 """
 
 import time
@@ -11,6 +11,15 @@ import pin_manager
 
 
 class MuxSelection:
+    """
+    Data points that can be read by an ADS1118. Includes all single-ended and
+    differential voltage inputs, as well as the internal temperature sensor.
+
+    Values correspond to the MUX bitfield in the Config Register, except for the
+    `TEMPERATURE` selection, which is handled through a separate TS_MODE field
+    and is given the special flag value 0xFF.
+    """
+
     CH0_SINGLE_END = 4
     CH1_SINGLE_END = 5
     CH2_SINGLE_END = 6
@@ -23,6 +32,15 @@ class MuxSelection:
 
 
 class InputRange:
+    """
+    Internal amplifier programmable gains that can be used on an ADS1118.
+
+    Values correspond to the PGA bitfield in the Config Register. For the 0.256V FSR PGA
+    setting (FSR_0_256V), the constant value 0b101 is arbitrarily selected from the valid
+    set of settings [0b101, 0b110, 0b111]. Note that changing the internal amplifier gain
+    for the ADS1118 affects the signal-to-noise ratio of the measurements themselves.
+    """
+
     FSR_6_144V = 0
     FSR_4_096V = 1
     FSR_2_048V = 2
@@ -32,6 +50,13 @@ class InputRange:
 
 
 class SamplingRate:
+    """
+    Sampling rates, in samples per second, that can be used on an ADS1118.
+
+    Values correspond to the DR bitfield in the Config Register. Note that changing the sample
+    rate for the ADS1118 affects the signal-to-noise ratio of the measurements themselves.
+    """
+
     RATE_8 = 0
     RATE_16 = 1
     RATE_32 = 2
@@ -68,6 +93,10 @@ ADS1118_SPI_RESET_TIME = 0.030  # ideally 28ms, but give it some wiggle room
 
 
 class ADS1118:
+    """
+    Driver class for the ADS1118 SPI analog-to-digital converter from Texas Instruments.
+    """
+
     def __init__(self, sck, mosi, miso, ss):
         pm = pin_manager.PinManager.get_instance()
         self.spi_bus = pm.create_spi(sck, mosi, miso)
@@ -84,6 +113,22 @@ class ADS1118:
         input_range=InputRange.FSR_4_096V,
         sample_rate=SamplingRate.RATE_128,
     ):
+        """
+        Asynchronous coroutine to sample the ADC on with a given set of settings.
+
+        First, a single-shot conversion command is sent to the ADC with the settings specified.
+        Then, the coroutine yields for other tasks for a fixed amount of time based on the
+        selected sampling rate to allow the ADC to process the data. Finally, the ADC is polled
+        for data readiness and, once readiness is confirmed, the data is read from the ADC.
+
+        In the case that an issue with the ADS1118 prevents data from being ready on schedule,
+        the driver will begin the process of resetting the ADC. This process takes 28ms, so in
+        the unlikely case that this process needs to occur, overall performance may be degraded.
+
+        The measurement defaults to a full-scale range of 4.096V and a sampling rate of 128
+        samples per second if not otherwise specified. The channel selected must be specified
+        explicitly and has no default.
+        """
         ADS1118._check_sampling_params(channel, input_range, sample_rate)
         transmit_buffer = ADS1118._build_config_register_bytearray(
             channel, input_range, sample_rate
@@ -123,6 +168,7 @@ class ADS1118:
                     data_ready = not drdy.value
                 ss.value = True
 
+        transmit_buffer[0] = transmit_buffer[0] & 0x7F
         with self.spi_bus as spi, self.ss_gpio as ss:
             spi.try_lock()
             spi.configure(baudrate=1000000, polarity=0, phase=1)

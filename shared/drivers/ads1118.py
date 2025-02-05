@@ -92,7 +92,7 @@ ADS1118_SPS_DELAYS = dict(
 ADS1118_SPI_RESET_TIME = 0.030  # ideally 28ms, but give it some wiggle room
 
 
-class ADS1118:
+class Ads1118:
     """
     Driver class for the ADS1118 SPI analog-to-digital converter from Texas Instruments.
     """
@@ -129,8 +129,8 @@ class ADS1118:
         samples per second if not otherwise specified. The channel selected must be specified
         explicitly and has no default.
         """
-        ADS1118._check_sampling_params(channel, input_range, sample_rate)
-        transmit_buffer = ADS1118._build_config_register_bytearray(
+        Ads1118._check_sampling_params(channel, input_range, sample_rate)
+        transmit_buffer = Ads1118._build_config_register_bytearray(
             channel, input_range, sample_rate
         )
         receive_buffer = bytearray([0, 0])
@@ -179,9 +179,9 @@ class ADS1118:
             spi.unlock()
 
         return (
-            ADS1118._temperature_from_bytes(receive_buffer)
+            Ads1118._temperature_from_bytes(receive_buffer)
             if (channel == MuxSelection.TEMPERATURE)
-            else ADS1118._voltage_from_bytes(receive_buffer, input_range)
+            else Ads1118._voltage_from_bytes(receive_buffer, input_range)
         )
 
     @staticmethod
@@ -205,9 +205,9 @@ class ADS1118:
 
     @staticmethod
     def _check_sampling_params(channel, input_range, sample_rate):
-        ADS1118._check_channel_param(channel)
-        ADS1118._check_fsr_param(input_range)
-        ADS1118._check_sps_param(sample_rate)
+        Ads1118._check_channel_param(channel)
+        Ads1118._check_fsr_param(input_range)
+        Ads1118._check_sps_param(sample_rate)
 
     @staticmethod
     def _build_config_register_bytearray(channel, input_range, sample_rate):
@@ -234,10 +234,10 @@ class ADS1118:
 
     @staticmethod
     def _temperature_from_bytes(receive_buffer):
-        reading = ADS1118._int_from_two_bytes_signed_be(receive_buffer) >> 2
+        reading = Ads1118._int_from_two_bytes_signed_be(receive_buffer) >> 2
         return reading * 0.03125
 
     @staticmethod
     def _voltage_from_bytes(receive_buffer, fsr):
         lsb_size = ADS1118_LSB_SIZES[fsr]
-        return ADS1118._int_from_two_bytes_signed_be(receive_buffer) * lsb_size
+        return Ads1118._int_from_two_bytes_signed_be(receive_buffer) * lsb_size

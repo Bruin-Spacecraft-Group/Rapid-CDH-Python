@@ -11,7 +11,7 @@ datastore = {
 }
 
 
-async def battey_management_task():
+async def battery_management_task():
     """
     Task which controls string protection and balancing circuits.
 
@@ -64,7 +64,7 @@ async def gathered_task():
     and intersubsystem communication.
     """
     await asyncio.gather(
-        battey_management_task(),
+        battery_management_task(),
         output_bus_control_task(),
         data_recording_task(),
         intersubsystem_communication_task(),

@@ -21,19 +21,19 @@ class ADS1118_Test(unittest.TestCase):
         ]:
             failure = None
             try:
-                ads1118.ADS1118._check_channel_param(ch)
+                ads1118.Ads1118._check_channel_param(ch)
             except AssertionError as e:
                 failure = e
             self.assertIsNone(failure)
         for non_byte in ADS1118_Test._NON_BYTE_OBJECTS:
             self.assertRaises(
                 AssertionError,
-                ads1118.ADS1118._check_channel_param,
+                ads1118.Ads1118._check_channel_param,
                 non_byte,
             )
         self.assertRaises(
             AssertionError,
-            ads1118.ADS1118._check_channel_param,
+            ads1118.Ads1118._check_channel_param,
             120,
         )
 
@@ -48,24 +48,24 @@ class ADS1118_Test(unittest.TestCase):
         ]:
             failure = None
             try:
-                ads1118.ADS1118._check_fsr_param(fsr)
+                ads1118.Ads1118._check_fsr_param(fsr)
             except AssertionError as e:
                 failure = e
             self.assertIsNone(failure)
         for non_byte in ADS1118_Test._NON_BYTE_OBJECTS:
             self.assertRaises(
                 AssertionError,
-                ads1118.ADS1118._check_fsr_param,
+                ads1118.Ads1118._check_fsr_param,
                 non_byte,
             )
         self.assertRaises(
             AssertionError,
-            ads1118.ADS1118._check_fsr_param,
+            ads1118.Ads1118._check_fsr_param,
             120,
         )
         self.assertRaises(
             AssertionError,
-            ads1118.ADS1118._check_fsr_param,
+            ads1118.Ads1118._check_fsr_param,
             255,
         )
 
@@ -82,24 +82,24 @@ class ADS1118_Test(unittest.TestCase):
         ]:
             failure = None
             try:
-                ads1118.ADS1118._check_sps_param(sps)
+                ads1118.Ads1118._check_sps_param(sps)
             except AssertionError as e:
                 failure = e
             self.assertIsNone(failure)
         for non_byte in ADS1118_Test._NON_BYTE_OBJECTS:
             self.assertRaises(
                 AssertionError,
-                ads1118.ADS1118._check_sps_param,
+                ads1118.Ads1118._check_sps_param,
                 non_byte,
             )
         self.assertRaises(
             AssertionError,
-            ads1118.ADS1118._check_sps_param,
+            ads1118.Ads1118._check_sps_param,
             120,
         )
         self.assertRaises(
             AssertionError,
-            ads1118.ADS1118._check_sps_param,
+            ads1118.Ads1118._check_sps_param,
             255,
         )
 
@@ -130,7 +130,7 @@ class ADS1118_Test(unittest.TestCase):
         for params in good_params:
             failure = None
             try:
-                ads1118.ADS1118._check_sampling_params(params[0], params[1], params[2])
+                ads1118.Ads1118._check_sampling_params(params[0], params[1], params[2])
             except AssertionError as e:
                 failure = e
             self.assertIsNone(failure)
@@ -152,7 +152,7 @@ class ADS1118_Test(unittest.TestCase):
         for params in bad_params:
             self.assertRaises(
                 AssertionError,
-                ads1118.ADS1118._check_sampling_params,
+                ads1118.Ads1118._check_sampling_params,
                 params[0],
                 params[1],
                 params[2],
@@ -160,7 +160,7 @@ class ADS1118_Test(unittest.TestCase):
 
     def test_config_register_format(self):
         self.assertEqual(
-            ads1118.ADS1118._build_config_register_bytearray(
+            ads1118.Ads1118._build_config_register_bytearray(
                 ads1118.MuxSelection.CH0_SINGLE_END,
                 ads1118.InputRange.FSR_4_096V,
                 ads1118.SamplingRate.RATE_128,
@@ -168,7 +168,7 @@ class ADS1118_Test(unittest.TestCase):
             b"\xC3\x8A",
         )
         self.assertEqual(
-            ads1118.ADS1118._build_config_register_bytearray(
+            ads1118.Ads1118._build_config_register_bytearray(
                 ads1118.MuxSelection.CH2_CH3_DIFF,
                 ads1118.InputRange.FSR_2_048V,
                 ads1118.SamplingRate.RATE_860,
@@ -176,7 +176,7 @@ class ADS1118_Test(unittest.TestCase):
             b"\xB5\xEA",
         )
         self.assertEqual(
-            ads1118.ADS1118._build_config_register_bytearray(
+            ads1118.Ads1118._build_config_register_bytearray(
                 ads1118.MuxSelection.CH0_CH1_DIFF,
                 ads1118.InputRange.FSR_6_144V,
                 ads1118.SamplingRate.RATE_8,
@@ -184,7 +184,7 @@ class ADS1118_Test(unittest.TestCase):
             b"\x81\x0A",
         )
         self.assertEqual(
-            ads1118.ADS1118._build_config_register_bytearray(
+            ads1118.Ads1118._build_config_register_bytearray(
                 ads1118.MuxSelection.TEMPERATURE,
                 ads1118.InputRange.FSR_0_256V,
                 ads1118.SamplingRate.RATE_64,
@@ -211,7 +211,7 @@ class ADS1118_Test(unittest.TestCase):
         ]
         for case in temp_sensor_data:
             self.assertAlmostEqual(
-                ads1118.ADS1118._temperature_from_bytes(bytes([case[0], case[1]])),
+                ads1118.Ads1118._temperature_from_bytes(bytes([case[0], case[1]])),
                 case[2],
             )
 
@@ -225,23 +225,23 @@ class ADS1118_Test(unittest.TestCase):
             (ads1118.InputRange.FSR_0_256V, 0.256),
         ]:
             self.assertAlmostEqual(
-                ads1118.ADS1118._voltage_from_bytes(b"\x7F\xFF", fsr[0]),
+                ads1118.Ads1118._voltage_from_bytes(b"\x7F\xFF", fsr[0]),
                 fsr[1] * (2**15 - 1) / (2**15),
             )
             self.assertAlmostEqual(
-                ads1118.ADS1118._voltage_from_bytes(b"\x00\x01", fsr[0]),
+                ads1118.Ads1118._voltage_from_bytes(b"\x00\x01", fsr[0]),
                 fsr[1] / (2**15),
             )
             self.assertAlmostEqual(
-                ads1118.ADS1118._voltage_from_bytes(b"\x00\x00", fsr[0]),
+                ads1118.Ads1118._voltage_from_bytes(b"\x00\x00", fsr[0]),
                 0,
             )
             self.assertAlmostEqual(
-                ads1118.ADS1118._voltage_from_bytes(b"\xFF\xFF", fsr[0]),
+                ads1118.Ads1118._voltage_from_bytes(b"\xFF\xFF", fsr[0]),
                 -fsr[1] / (2**15),
             )
             self.assertAlmostEqual(
-                ads1118.ADS1118._voltage_from_bytes(b"\x80\x00", fsr[0]),
+                ads1118.Ads1118._voltage_from_bytes(b"\x80\x00", fsr[0]),
                 -fsr[1],
             )
 

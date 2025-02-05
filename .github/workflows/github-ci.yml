@@ -26,6 +26,4 @@ jobs:
         python -m pip install --upgrade pip
         pip install 'pylama[all]'
     - run: |
-        pylama -o config/pylama.cfg applications unit_tests shared/drivers
-    
-    
+        python3 ./tools/static_analysis.py

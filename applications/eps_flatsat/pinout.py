@@ -1,3 +1,12 @@
+"""
+Defines wiring that goes to the EPS microcontroller on the EPS flatsat PCB from June 2024.
+
+Software should refer to the pins named here rather than any pin definitions in the `board`
+or `microcontroller` modules so that future PCB changes, as needed, don't necessitate
+widespread changes to existing, tested control software modules. Using these definitions
+also promotes code readability.
+"""
+
 import microcontroller
 
 # power supply control pins
@@ -22,10 +31,10 @@ ADC_XCS3 = microcontroller.pin.PA02
 ADC_XCS4 = microcontroller.pin.PB04
 
 # battery pack balancing controls
-pass
+# (BMS not populated on flatsat PCB)
 
 # battery pack protection controls
-pass
+# (BMS not populated on flatsat PCB)
 
 # inter-subsystem SPI bus
 BUS_SCK = microcontroller.pin.PB17

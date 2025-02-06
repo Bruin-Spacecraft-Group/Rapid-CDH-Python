@@ -7,18 +7,22 @@ import board
 import microcontroller
 import busio
 import digitalio
-import time
+
 
 async def inter_subsystem_rs485_sender_task():
+    """
+    Task that sends 0xFFEEDDCC and lights up the LED for 1 second if write is successful.
+    """
     led = digitalio.DigitalInOut(board.LED1)
     led.direction = digitalio.Direction.OUTPUT
 
-    uart = busio.UART(microcontroller.pin.PB13, microcontroller.pin.PB12, baudrate=50000)
+    uart = busio.UART(
+        microcontroller.pin.PB13, microcontroller.pin.PB12, baudrate=50000
+    )
     # pins defined for the STM32H743
 
     te = digitalio.DigitalInOut(microcontroller.pin.PA15)
     te.direction = digitalio.Direction.OUTPUT
-
 
     while True:
         te.value = True
@@ -36,8 +40,8 @@ async def inter_subsystem_rs485_sender_task():
         if write:
             led.value = True
             print("Data sent, number of bytes sent: ", write)
-            time.sleep(1)
+            await asyncio.sleep(1)
             led.value = False
-            time.sleep(1)
+            await asyncio.sleep(1)
         else:
             print("Error sending data")

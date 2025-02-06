@@ -7,10 +7,12 @@ import board
 import microcontroller
 import busio
 import digitalio
-import time
 
 
 async def inter_subsystem_rs485_reciever_task():
+    """
+    Task that receives any RS485 message and lights up the LED for 1 second if successfully received data.
+    """
     led = digitalio.DigitalInOut(board.LED1)
     led.direction = digitalio.Direction.OUTPUT
 
@@ -30,9 +32,9 @@ async def inter_subsystem_rs485_reciever_task():
         if data is not None:
             led.value = True
             print("Data received: ", list(data))
-            time.sleep(1)
+            await asyncio.sleep(1)
             led.value = False
-            time.sleep(1)
+            await asyncio.sleep(1)
 
         else:
             print("Error receiving data")
